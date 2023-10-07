@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<lc:applicationManifest
+	lc:appUri="http://uclobby.com/BlockMeetingFileTransfer"
+	xmlns:lc="http://schemas.microsoft.com/lcs/2006/05">
+
+	<lc:requestFilter methodNames="INFO,SUBSCRIBE,NOTIFY" strictRoute="true"/>
+    <lc:responseFilter reasonCodes="ALL"/>
+    <lc:scriptOnly/>
+
+	<lc:splScript>
+		<![CDATA[
+
+		/*
+			Module Name:	BlockMeetingFileTransfer.am   
+			Version:		1.0
+		*/
+		
+		processMsg = false;
+		msgType = GetHeaderValues("Content-Type");
+
+		if(sipRequest) {
+			if((IndexOfString(msgType , "application/cccp+xml") != -1) || (IndexOfString(msgType ,"application/conference-info+xml") != -1)) {
+				strContent = sipRequest.Content;
+				fromUser = GetHostName(GetUri(sipRequest.From));
+				toUser = GetHostName(GetUri(sipRequest.To));
+				if(fromUser != toUser){
+					processMsg = true;
+				}
+			}
+		} 
+		if (sipResponse) {
+			if(IndexOfString(msgType , "application/conference-info+xml") != -1){
+				strContent = sipResponse.Content;
+				fromUser = GetHostName(GetUri(sipResponse.From));
+				toUser = GetHostName(GetUri(sipResponse.To));
+				if(fromUser != toUser){
+					processMsg = true;
+				}
+			}
+		}
+
+		if(processMsg) {
+			
+			index = IndexOfString(strContent, "<msdata:supported-content-type>Content.NativeFileOnly</msdata:supported-content-type>");
+			if (index != -1)
+			{
+				FirstPart = SubString(strContent, 0, index);
+				SecondPart = SubString(strContent, index + 86, LengthString(strContent));
+				strContent = Concatenate(FirstPart, SecondPart);
+				Log ("Event", false, "NativeFileOnly was removed!");
+			}
+			
+			
+			if(sipRequest) {		
+				sipRequest.Content = strContent;
+
+			} 
+			if (sipResponse) {
+				sipResponse.Content = strContent;
+			}
+		}
+			
+		return;
+		]]>
+	</lc:splScript>
+</lc:applicationManifest>
